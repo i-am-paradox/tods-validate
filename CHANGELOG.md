@@ -5,12 +5,77 @@ new checks may be added in minor releases.
 
 ## [Unreleased]
 
+Added:
+
 - Add `TODS-W109` (structure warning): a file defined by a supported TODS
   spec version other than the one being validated against is now reported as
   recognized but belonging to that other version, instead of falling through
   to `TODS-I102` "not a TODS file at all". A v1.0.0 file in a package
   validated at the 2.1.0 default gets the new warning and points at
   `--spec-version`. [#143](https://github.com/ChelseaKR/tods-validate/issues/143)
+
+Fixed:
+
+- Every page the site publishes advertised a share card with no image on it.
+  `web/index.html` and all 45 catalog pages carried `og:title`,
+  `og:description` and `og:url` and no `og:image` or `twitter:image`, with
+  `twitter:card` set to `summary`, so a link to the playground or to a rule
+  page unfurled on LinkedIn, Slack or X as grey text. `web/og-card.png` is
+  1200x630, the box all three fit an unfurled image to, and `twitter:card` is
+  now `summary_large_image`. The catalog pages get theirs from
+  `scripts/generate_rules_doc.py`, which derives the card's absolute URL from
+  `RULE_PAGE_BASE` so the site root has one definition; a relative one would be
+  fetched from `https://chelseakr.github.io/`, the 404 these pages share with
+  five sibling projects. `tests/test_playground.py` and
+  `tests/test_generate_rules_doc.py` now read the PNG header, so a card that is
+  missing from `web/` or is not 1200x630 fails the gate instead of failing in
+  someone else's feed.
+
+- The README opened with `Status: Beta` on the line under the heading, ahead of
+  any sentence saying what the tool is, so the first fact a reader got about
+  `tods-validate` was a caveat about something they had not been told about
+  yet. The status line now follows the one-sentence description instead of
+  preceding it. The text is unchanged and nothing was dropped.
+
+- The release-triggered playground deploy had never completed. `pypi-publish.yml`
+  reaches `github-pages` through `deploy-playground`, which calls `pages.yml`
+  during a `release: published` run, where the ref is a tag; that environment
+  admitted the branch `main` and nothing else, so the job was refused before its
+  first step on both v0.10.0 and v0.11.0. A refused deploy renders as a failed
+  job with no steps and no retrievable log. The site did not visibly fall
+  behind, because `pages.yml` was dispatched by hand afterwards: two
+  `workflow_dispatch` runs on 2026-08-22, the day v0.10.0 shipped. It has no
+  `push` trigger, so there was no automatic fallback and every release since
+  depended on someone noticing. The environment now admits the tag pattern
+  `v*`.
+- `docs/environments/main.json` records both deployment environments' branch
+  policies, and `tests/test_deployment_environments.py` checks them against the
+  workflows, following local `uses:` calls because a reusable workflow runs at
+  its caller's ref. Writing that test found the same class of defect in itself:
+  `lstrip("./")` strips every leading `.` and `/`, so the called-workflow path
+  resolved to one that does not exist and the check passed while reaching
+  nothing.
+
+Changed:
+
+- The share-card tags and their alternative text cost 1.1 KiB of head on
+  `web/index.html`, taking the measured page to 11,513 bytes against the
+  12,288-byte ceiling in `perf/bundle-baseline.json`. The ceiling did not
+  move: the budget deliberately ran a tight margin so that an addition of this
+  size would be argued for rather than absorbed, and the argument is recorded
+  in the file's rationale and in `docs/BENCHMARKS.md`. Six percent headroom
+  remains, on a page that is not supposed to grow. The card itself is a static
+  asset and enters neither byte figure.
+
+- The browser playground installs 0.11.0, and WVR-003 is retired now that PyPI
+  serves it.
+
+- Corrects a claim made in the entry above when it landed. It said the
+  playground kept reaching production by a push-to-`main` path; `pages.yml` has
+  no `push` trigger and never had one, and the real fallback was a manual
+  dispatch. The correction matters because the two readings differ in what was
+  at risk: an automatic path degrading quietly, versus a release step that only
+  completed when a person remembered to run it.
 
 ## [0.11.0] - 2026-09-01
 
